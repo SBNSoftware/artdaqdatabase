@@ -1,0 +1,36 @@
+#!/bin/bash
+(( $(id -u) )) && { echo "Error: Run $(basename $0) as root!"; exit 1; } 
+
+unset RUNSERVER
+unset RUNARBITER
+
+[[ "$(hostname -s)" == "${EXPERIMENT}-db01" ]] && RUNSERVER='TRUE'
+[[ "$(hostname -s)" == "${EXPERIMENT}-db02" ]] && RUNSERVER='TRUE' && RUNARBITER='TRUE'
+
+[[ -z ${RUNSERVER+x} ]]  || echo "Info: MongoDB Server  will be (re)configured on $(hostname -s)."
+[[ -z ${RUNARBITER+x} ]] || echo "Info: MongoDB Arbiter will be (re)configured on $(hostname -s)."
+[[ -z ${RUNARBITER+x} ]] && [[ -z ${RUNSERVER+x} ]] && { echo "Error: $(basename $0) is not configured to run on $(hostname -s).";exit 2; }
+
+systemctl daemon-reload
+#Stop MongoDB services for ${MONGOD_DATA_DIR}
+systemctl stop mongo-server@${MONGOD_DATA_DIR}.service
+systemctl stop mongo-arbiter@${MONGOD_DATA_DIR}.service
+#Disable MongoDB services for ${MONGOD_DATA_DIR}
+systemctl disable mongo-server@${MONGOD_DATA_DIR}.service
+systemctl disable mongo-arbiter@${MONGOD_DATA_DIR}.service
+systemctl daemon-reload
+
+#Install new SystemD unit files
+cp ${INSTALL_PREFIX}/mongo-server@.service /etc/systemd/system/mongo-server@${MONGOD_DATA_DIR}.service
+cp ${INSTALL_PREFIX}/mongo-arbiter@.service /etc/systemd/system/mongo-arbiter@${MONGOD_DATA_DIR}.service
+systemctl daemon-reload
+#Enable MongoDB services for ${MONGOD_DATA_DIR}
+[[ -z ${RUNSERVER+x} ]]  || systemctl enable mongo-server@${MONGOD_DATA_DIR}.service
+[[ -z ${RUNARBITER+x} ]] || systemctl enable mongo-arbiter@${MONGOD_DATA_DIR}.service
+#Start MongoDB services for ${MONGOD_DATA_DIR}
+[[ -z ${RUNARBITER+x} ]] || systemctl start mongo-arbiter@${MONGOD_DATA_DIR}.service
+[[ -z ${RUNSERVER+x} ]]  || systemctl start mongo-server@${MONGOD_DATA_DIR}.service
+#Report status of MongoDB services for ${MONGOD_DATA_DIR}
+[[ -z ${RUNSERVER+x} ]]  || systemctl status mongo-server@${MONGOD_DATA_DIR}.service
+[[ -z ${RUNARBITER+x} ]] || systemctl status mongo-arbiter@${MONGOD_DATA_DIR}.service
+

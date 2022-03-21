@@ -1,0 +1,35 @@
+# The mongo-server service unit file
+#
+# Quick HowTo:
+# 1. Copy this file to /etc/systemd/system/mongo-server@${MONGOD_DATA_DIR}.service
+# 2. Run "systemctl daemon-reload"
+# 3. Run "systemctl enable mongo-server@${MONGOD_DATA_DIR}.service"
+# 5. Run "systemctl start mongo-server@${MONGOD_DATA_DIR}.service"
+#
+# 6. Check status "systemctl status mongo-server@${MONGOD_DATA_DIR}.service"
+# 7. Stop "systemctl stop mongo-server@${MONGOD_DATA_DIR}.service"
+
+
+[Unit]
+Description=MongoDB Server Service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=${RUN_AS_USER}
+Group=${RUN_AS_GROUP}
+
+EnvironmentFile=${INSTALL_PREFIX}/%i/mongod.env
+ExecStart=${INSTALL_PREFIX}/mongod-ctrl.sh start
+ExecStop=${INSTALL_PREFIX}/mongod-ctrl.sh stop
+
+TimeoutSec=60
+Restart=always
+StartLimitInterval=200
+StartLimitBurst=1
+RestartSec=300
+
+[Install]
+WantedBy=multi-user.target
+
+
