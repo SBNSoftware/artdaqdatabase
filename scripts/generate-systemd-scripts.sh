@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 [[ "$0" != "$BASH_SOURCE" ]] && { echo "You should run this script!"; return 1; }
 [[ -z ${SUBSHELL+x} ]] && { env -i SUBSHELL='TRUE' LANG='en_US.UTF-8' TERM=${TERM} \
-  KRB5CCNAME=$(klist 2>&1 |grep cache |grep -Eo '/tmp/[a-z0-9_]+')  \
+  KRB5CCNAME=$(klist 2>&1 |grep cache |grep -Eo '/tmp/[a-zA-Z0-9_]+')  \
   HOME=${HOME} PATH=${PATH} PWD=${PWD} $(readlink -f $0); exit $?; }
 SCRIPT_DIR=$(dirname  $(readlink -f $0))
 [[ -f ${SCRIPT_DIR}/read-configuration-settings.sh ]] && \

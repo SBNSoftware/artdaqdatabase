@@ -50,7 +50,7 @@ systemctl status mongo-arbiter\@${MONGOD_DATA_DIR}.service  >>${logname}
 
 
 /bin/cat - ${logname}  << EOF | /usr/sbin/sendmail -t
-To: user@example.com
+To: lukhanin@fnal.gov
 Subject: Status ${host}
 From: ${RUN_AS_USER}@$(hostname -s).fnal.gov
 
