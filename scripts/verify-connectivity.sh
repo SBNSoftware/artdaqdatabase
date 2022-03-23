@@ -66,7 +66,6 @@ function check_ssh_root(){
 
   (( error_count==0 )) && return $RC_SUCCESS
 
-  echo "Error: You are not allowed to ssh as ROOT into one of the following hosts ${MONGOD_HOSTS}, or ${MONGOD_ARB_HOST}."
   return $RC_FAILURE
 }
 
@@ -99,11 +98,16 @@ function run_iperf_test(){
     for client_hostname in $(echo ${MONGOD_HOSTS},${MONGOD_ARB_HOST}| sed 's/,/\n/g' |grep -v $(hostname -s)|sort -u); do
       local client_ip=$(ping -c 1 -t 1 ${client_hostname} |grep PING |cut -d" " -f3 |grep -Eo '[0-9\.]+')
       echo
-      printf "Info: Running iperf between ${server_hostname}[$server_ip:$p] and ${client_hostname}[$client_ip:$p]\n"
+      echo "Info: Running iperf between ${server_hostname}[$server_ip:$p] and ${client_hostname}[$client_ip:$p]"
       nohup timeout 7 iperf --server --time=6 --interval=1 --port=$p --bind=$server_ip >${iperf_out} &
       ssh -F ${HOME}/.ssh/config_mongosetup artdaq@$client_hostname${SUBNET_SUFFIX} iperf --time=5 --client=$server_ip --interval=1 --dualtest --port=$p
       cat ${iperf_out}
-      (( $(cat ${iperf_out}|grep $client_ip |wc -l) == 2 )) || ((error_count+1))
+      (( $(cat ${iperf_out}|grep "connected with" | grep $client_ip |wc -l) == 2 )) || ((error_count++))
+      (( $(cat ${iperf_out}|grep -i "failed"  |wc -l) == 0 )) || ((error_count++))
+      (( $(cat ${iperf_out}|grep -i "already in use"|wc -l) == 0 )) || {
+      echo -e "\e[31;7;5mError: Verify that ports ${MONGOD_PORT} and $((MONGOD_PORT+1)) are not already in use by some other software running on ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}.\e[0m";
+        ((error_count++));
+      }
     done
   done
 
@@ -120,32 +124,30 @@ function main_program(){
   echo;echo
   setup_mongodb_product
   [[ $? -ne $RC_SUCCESS ]] && {
-    echo -e "\e[31;7;5mError: Install MongoDB ${MONGOD_UPS_VER} into ${MONGOD_PRODUCTS_DIR} and rerun ${script_name}.\e[0m"; 
+    echo -e "\e[31;7;5mError: Install MongoDB ${MONGOD_UPS_VER} into ${MONGOD_PRODUCTS_DIR} and rerun ${script_name}.\e[0m";
     return $RC_FAILURE; }
 
   echo;echo
   ping_hosts
   [[ $? -ne $RC_SUCCESS ]] && {
-    echo -e "\e[31;7;5mError: Fix /etc/hosts and/or DNS records for ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}; and rerun ${script_name}.\e[0m"; 
+    echo -e "\e[31;7;5mError: Fix /etc/hosts and/or DNS records for ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}; and rerun ${script_name}.\e[0m";
     return $RC_FAILURE; }
 
   echo;echo
   check_ssh
   [[ $? -ne $RC_SUCCESS ]] && {
-    echo -e "\e[31;7;5mError: Fix SSH connectivity to ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}; and rerun ${script_name}.\e[0m"; 
+    echo -e "\e[31;7;5mError: Fix SSH connectivity to ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}; and rerun ${script_name}.\e[0m";
      return $RC_FAILURE;}
 
      echo;echo
   check_selinux
   [[ $? -ne $RC_SUCCESS ]] && {
-    echo -e "\e[31;7;5mError: Ask SLAM to set the SELInux mode to permissive or disabled on ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}.\e[0m"; 
+    echo -e "\e[31;7;5mError: Ask SLAM to set the SELInux mode to permissive or disabled on ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}.\e[0m";
      return $RC_FAILURE;}
 
   echo;echo
   check_ssh_root
-  [[ $? -ne $RC_SUCCESS ]] && {
-    echo -e "\e[31;7;5mError: You don’t have root login privilege on ${MONGOD_HOSTS}, and ${MONGOD_ARB_HOST}.\e[0m";
-    echo -e "\e[0;7;5mInfo: Ask SLAM to run the ${INSTALL_PREFIX}/reinstall-systems.sh as root on ${MONGOD_HOSTS}.\e[0m"; }
+  have_root=$?
 
   echo;echo
   run_iperf_test
@@ -155,6 +157,12 @@ function main_program(){
 
   echo
   echo -e "\e[0;7;5mInfo: All connectivity tests succeeded.\e[0m"
+  echo;echo "Info: Proceed to the artdaq database installation step."
+  if [[ ${have_root} -ne $RC_SUCCESS ]];then
+    echo
+    echo "Info: SSH-ing as root did not work for all of the following hosts ${MONGOD_HOSTS}."
+    echo "Info: When prompted, ask members of SLAM or DAQ groups to run the install systemd services script as root on ${MONGOD_HOSTS}."
+  fi
 }
 
 #----------------------------------------------------------------

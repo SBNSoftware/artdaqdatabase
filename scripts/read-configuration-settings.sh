@@ -103,7 +103,7 @@ function verify_essential_dependencies() {
       echo "Error: '${tool_name}' was not found."
     fi
   done
-
+  install_fzf
   [[ ${missing_dependencies} == "" ]] && return $RC_SUCCESS;
 
   echo "Error: Install missing dependencies ${missing_dependencies}."
@@ -197,10 +197,19 @@ EOF
   fi
 }
 
+function install_fzf(){
+  echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
+  if [[ ! -f ~/.fzf.bash ]]; then
+    rm -rf ~/.fzf
+    git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
+    ~/.fzf/install --no-key-bindings --no-completion --no-update-rc --no-zsh --no-fish
+  fi
+}
+
 function select_backup_dir(){
   echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
   unset BACKUP_DIR
-  local back_dir=/software/backup/icarus_v4x_db/backup
+  local back_dir=/software/backup/${MONGOD_DATA_DIR}/backup
   local back_db=$(ls -tr $back_dir/ |tail -1)
   if [[ -f ~/.fzf.bash ]]; then
     source ~/.fzf.bash > /dev/null 2>&1

@@ -24,11 +24,11 @@ export_artdaqdb_uri
 echo;echo "Running: conftool.py readDatabaseInfo"
 conftool.py readDatabaseInfo |grep -vE '(nodename|uri)'
 (( ${PIPESTATUS[0]}==0 )) ||\
-  { echo -e "\e[31;7;5mError: Can’t query artdaq database info, login into db01 and db02 and verify that services are running.\e[0m";exit $RC_FAILURE; }
+  { echo -e "\e[31;7;5mError: Can’t query artdaq database info, login into db01 and db02 and verify that MongoDB services are running.\e[0m";exit $RC_FAILURE; }
 
 echo;echo "Running: conftool.py listDatabases"
 conftool.py listDatabases
-(( $?==0 )) || { echo -e "\e[31;7;5mError: Can’t query artdaq database info, login into db01 and db02 and verify that services are running.\e[0m";exit $RC_FAILURE; }
+(( $?==0 )) || { echo -e "\e[31;7;5mError: Can’t query artdaq database info, login into db01 and db02 and verify that MongoDB services are running.\e[0m";exit $RC_FAILURE; }
 
 
 suffx=imp
@@ -45,16 +45,16 @@ for d in $(ls -d ${testdir}/*); do
   echo;echo "Running: conftool.py importConfiguration $(basename ${d})"
   cd  $d
   conftool.py importConfiguration $(basename ${d})| grep -v Imported
-  (( ${PIPESTATUS[0]}==0 )) || { echo -e "\e[31;7;5mError: conftool.py control.py returned non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
+  (( ${PIPESTATUS[0]}==0 )) || { echo -e "\e[31;7;5mError: conftool.py returned a non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
 done 
 
 echo;echo "Running: conftool.py getListOfAvailableRunConfigurationPrefixes"
 conftool.py getListOfAvailableRunConfigurationPrefixes
-(( $?==0 ))  || { echo -e "\e[31;7;5mError: conftool.py control.py returned non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
+(( $?==0 ))  || { echo -e "\e[31;7;5mError: conftool.py returned a non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
 
 echo;echo "Running: conftool.py getListOfAvailableRunConfigurations"
 conftool.py getListOfAvailableRunConfigurations
-(( $?==0 )) || { echo -e "\e[31;7;5mError: conftool.py control.py returned non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
+(( $?==0 )) || { echo -e "\e[31;7;5mError: conftool.py returned a non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
 
 suffx=exp
 testdir=/tmp/conftoolpytests-${RUN_AS_USER}-${TIMESTAMP}/${suffx}
@@ -63,13 +63,13 @@ for c in conf00001 conf00002 conf00003; do
   mkdir -p ${testdir}/${c}
   cd  ${testdir}/${c}
   conftool.py exportConfiguration ${c} | grep -v Exported
-  (( ${PIPESTATUS[0]}==0 )) || { echo -e "\e[31;7;5mError: conftool.py control.py returned non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
+  (( ${PIPESTATUS[0]}==0 )) || { echo -e "\e[31;7;5mError: conftool.py returned a non-zero exit status, check for errors and re-run tests.\e[0m"; ((error_count+=1)); }
 done
 
 rm -rf /tmp/conftoolpytests*
 
-(( error_count==0 )) && { echo -e "\e[0;7;5mInfo: All tests worked run restore-database.sh.\e[0m"; exit $RC_SUCCESS; }
+(( error_count==0 )) && { echo -e "\e[0;7;5mInfo: All tests succeeded, please run restore-database.sh.\e[0m"; exit $RC_SUCCESS; }
 
-echo -e "\e[31;7;5mError: ${error_count} tests have failed. Try running them again, also review the instructions for control.py\e[0m"
+echo -e "\e[31;7;5mError: This is unexpected! Several tests have failed. Please try running this script again, also review the instructions for conftool.py.\e[0m"
 echo "https://cdcvs.fnal.gov/redmine/projects/artdaq-utilities/wiki/Artdaq-config-conftool"
 exit $RC_FAILURE

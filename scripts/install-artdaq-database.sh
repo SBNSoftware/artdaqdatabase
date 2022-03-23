@@ -160,8 +160,8 @@ function configure_rs0() {
   echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
   start_rs0
   [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed starting MongoDB rs0."; stop_rs0; return $RC_FAILURE; }
-  echo "Info: Sleeping for 10 seconds."
-  sleep 10
+  echo "Info: Sleeping for 5 seconds."
+  sleep 5
 
   ${INSTALL_PREFIX}/scripts/configure-rs0.sh
   [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed configuring MongoDB rs0."; stop_rs0; return $RC_FAILURE; }
@@ -203,9 +203,9 @@ function deploy_systemd_scripts() {
   local error_count=0
   local ignore_once=1
   for h in $(echo ${MONGOD_HOSTS}| sed 's/,/\n/g'); do
-    (( $ignore_once )) && ignore_once=0 || { echo "Info: Sleeping for 10 seconds."; sleep 10; }
+    #(( $ignore_once )) && ignore_once=0 || { echo "Info: Sleeping for 5 seconds."; sleep 5; }
     ssh -F ${HOME}/.ssh/config_mongosetup root@${h} "${INSTALL_PREFIX}/install-systemd-services.sh"
-    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed deploying SystemD services on $h.\n"; ((error_count+=1)); }
+    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed deploying SystemD services on ${h}."; ((error_count+=1)); }
   done
 
   (( error_count==0 )) && \
@@ -215,57 +215,11 @@ function deploy_systemd_scripts() {
   return $RC_FAILURE
 }
 
-function stop_systemd_services() {
-  echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
-  local error_count=0
-  local ignore_once=1
-  for h in $(echo ${MONGOD_HOSTS}| sed 's/,/\n/g'); do
-    (( $ignore_once )) && ignore_once=0 || { echo "Info: Sleeping for 10 seconds."; sleep 10; }
-    ssh -F ${HOME}/.ssh/config_mongosetup root@${h} "systemctl stop mongo-server@${MONGOD_DATA_DIR}.service"
-    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed stopping MongoDB Server service on $h.\n"; ((error_count+=1)); }
-    ssh -F ${HOME}/.ssh/config_mongosetup root@${h} "systemctl stop mongo-arbiter@${MONGOD_DATA_DIR}.service"
-    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed stopping MongoDB Arbiter service on $h.\n"; ((error_count+=1)); }
-  done
-
-  (( error_count==0 )) &&  { return $RC_SUCCESS; }
-  echo "Error: Execute the following commands as root on ${MONGOD_HOSTS}"
-  echo "   systemctl stop mongo-server@${MONGOD_DATA_DIR}.service"
-  echo "   systemctl stop mongo-arbiter@${MONGOD_DATA_DIR}.service"
-
-  return $RC_FAILURE
-}
-
-function start_systemd_services() {
-  echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
-  local error_count=0
-  local ignore_once=1
-  for h in $(echo ${MONGOD_HOSTS}| sed 's/,/\n/g'); do
-    (( $ignore_once )) && ignore_once=0 || { echo "Info: Sleeping for 10 seconds."; sleep 10; }
-    ssh -F ${HOME}/.ssh/config_mongosetup root@${h} "systemctl start mongo-arbiter@${MONGOD_DATA_DIR}.service"
-    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed stopping MongoDB Arbiter service on $h.\n"; ((error_count+=1)); }
-    ssh -F ${HOME}/.ssh/config_mongosetup root@${h} "systemctl start mongo-server@${MONGOD_DATA_DIR}.service"
-    [[ $? -ne $RC_SUCCESS ]] && { echo "Error: Failed stopping MongoDB Server service on $h.\n"; ((error_count+=1)); }
-    echo "Info: Sleeping for 10 seconds."
-  done
-
-  (( error_count==0 )) &&  { return $RC_SUCCESS; }
-  echo "Error: Execute the following commands as root on ${MONGOD_HOSTS}"
-  echo "   systemctl start mongo-arbiter@${MONGOD_DATA_DIR}.service"
-  echo "   systemctl start mongo-server@${MONGOD_DATA_DIR}.service"
-
-  return $RC_FAILURE
-}
-
 #----------------------------------------------------------------
 # Main program starts here.
 #----------------------------------------------------------------
 function main_program(){
   echo "Info: Calling function ${FUNCNAME[0]}() from $(basename $0)"
-  echo; echo;
-  stop_systemd_services
-  if [[ $? -ne $RC_SUCCESS ]]; then
-    echo -e "\e[31;7;5mError: Failed stopping MongoDB services, try SSH-ing into ${MONGOD_HOSTS} as root and stop them manually.\e[0m"; return $RC_FAILURE
-  fi
   echo;echo
   setup_running_area
   if [[ $? -ne $RC_SUCCESS ]]; then
@@ -292,10 +246,9 @@ function main_program(){
   deploy_systemd_scripts
   if [[ $? -ne $RC_SUCCESS ]]; then
     echo -e "\e[31;7;5mError: Failed deploying SystemD services to run MongoDB replica set.\e[0m";
-    echo -e "\e[0;7;5m\
-Info: If you don't have root login privileges ask members of SLAM or DAQ groups to run \
+    echo "Info: You don't have root login privileges, please ask members of SLAM or DAQ groups to run \
 ${INSTALL_PREFIX}/install-systemd-services.sh as root on db01 first, wait 30 seconds for \
-services to warm up and then run ${INSTALL_PREFIX}/install-systemd-services.sh on db02.\e[0m"; return $RC_FAILURE
+services to warm up and then run ${INSTALL_PREFIX}/install-systemd-services.sh on db02."; return $RC_FAILURE
   fi
 
 
@@ -305,7 +258,7 @@ services to warm up and then run ${INSTALL_PREFIX}/install-systemd-services.sh o
 #  fi
 
   echo;echo;
-  echo -e "\e[0;7;5mInfo: All done run conftoolpy-tests.sh.\e[0m"
+  echo -e "\e[0;7;5mInfo: All done, please run conftoolpy-tests.sh.\e[0m"
 }
 
 #----------------------------------------------------------------
