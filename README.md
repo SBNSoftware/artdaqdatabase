@@ -14,7 +14,7 @@ The recommendation is to keep MongoDB data in a separate designated local partit
 1. Review the latest [README.md](https://github.com/SBNSoftware/artdaqdatabase) entirely.
 2. ssh into the db02 server as artdaq with a forwardable Kerberos ticket (the -K flag).
 3. Create ~/.mongodb_install.env with the following contents.
-
+Note: for production copy ~/.mongodb_install.env.prod into ~/.mongodb_install.env and update the INSTALL_PREFIX variable only.
 ```bash=
 EXPERIMENT=icarus
 #path to the MongoDB data, e.g. /scratch_local/artdaq_database_001
